@@ -5,9 +5,9 @@ from utils.color import bcolors
 
 class BEVTransformer:
     def __init__(self, H, width, height) -> None:
-        self.H = None
-        self.width = None
-        self.height = None
+        self.H = H
+        self.width = width
+        self.height = height
 
         # downward translation (temporarily)
         self.T = np.array([[1, 0, 100], 

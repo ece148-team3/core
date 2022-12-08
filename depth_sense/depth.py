@@ -64,35 +64,34 @@ class DaiDepth:
             # Output queue will be used to get the disparity frames from the outputs defined above
             q = device.getOutputQueue(name="disparity", maxSize=4, blocking=False)
 
-            while True:
-                inDisparity = q.get()  # blocking call, will wait until a new data has arrived
-                frame = inDisparity.getFrame()
+            # while True:
+            inDisparity = q.get()  # blocking call, will wait until a new data has arrived
+            frame = inDisparity.getFrame()
 
-                # Normalization for better visualization
-                normalized_frame = frame * (255 / self.max_disparity_val)
-                vis_frame = normalized_frame.astype(np.uint8) # only used for visualization
+            # Normalization for better visualization
+            normalized_frame = frame * (255 / self.max_disparity_val)
+            vis_frame = normalized_frame.astype(np.uint8) # only used for visualization
+        
+            non_vis_frame = (frame * (255 / self.max_disparity_val)).astype(np.float32)
+            if visualize:
+                frame = vis_frame 
+                disparities, move = self.getDisparity(pipeline, frame, visualize)
+            else:
+                frame = non_vis_frame
+                disparities, move = self.getDisparity(pipeline, frame, visualize)
             
-                non_vis_frame = (frame * (255 / self.max_disparity_val)).astype(np.float32)
-                if visualize:
-                    frame = vis_frame 
-                    disparities, move = self.getDisparity(pipeline, frame, visualize)
+            if cv2.waitKey(1) == ord('q'): # Hit q to print 
+                print(disparities)
+                if (move == 0):
+                    print("Go straight!")
+                elif (move == 1):
+                    print("Turn left!")
+                elif (move == 2):
+                    print("Turn right!")
+                elif (move == 3):
+                    print("Go back!")
                 else:
-                    frame = non_vis_frame
-                    disparities, move = self.getDisparity(self.pipeline, frame, visualize)
-                
-                if cv2.waitKey(1) == ord('q'): # Hit q to print 
-                    print(disparities)
-                    if (move == 0):
-                        print("Go straight!")
-                    elif (move == 1):
-                        print("Turn left!")
-                    elif (move == 2):
-                        print("Turn right!")
-                    elif (move == 3):
-                        print("Go back!")
-                    else:
-                        print("Invalid move!")
-                    break
+                    print("Invalid move!")
 
     def getDisparity(self, pipeline, frame, show_frame=False):
 

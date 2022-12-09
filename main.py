@@ -20,7 +20,6 @@ from vesc.vesc_control import VESC
 from bev.transformer import BEVTransformer
 from depth_sense.depth import DaiDepth
 
-
 if __name__ == "__main__":
     
     DEBUG = True # global debug flag

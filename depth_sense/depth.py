@@ -53,48 +53,18 @@ class DaiDepth:
         self.monoRight.out.link(self.depth.right)
         self.depth.disparity.link(self.xout.input)
 
-    def getFrame(self, pipeline, visualize=False):
+        self.focal_length = dai.Device(self.pipeline).readCalibration().getCameraIntrinsics(dai.CameraBoardSocket.RIGHT)[0][0]
 
-        # Connect to device and start pipeline
-        with dai.Device(pipeline) as device:
-            calibData = device.readCalibration()
-            intrinsics = calibData.getCameraIntrinsics(dai.CameraBoardSocket.RIGHT)
-            focal_length = intrinsics[0][0]
 
-            # Output queue will be used to get the disparity frames from the outputs defined above
-            q = device.getOutputQueue(name="disparity", maxSize=4, blocking=False)
+    def get_frame(self, disparity_stream, visualize=False):
+        """Get raw disparity stream from the pipeline, apply normalization to make range into [0, 255]"""
+        inDisparity = disparity_stream.get()  # blocking call, will wait until a new data has arrived
+        frame = inDisparity.getFrame()
+        print(frame.shape)
+        normalized_frame = (frame * (255 / self.max_disparity_val)).astype(np.float32) # normalize and return
+        return normalized_frame
 
-            # while True:
-            inDisparity = q.get()  # blocking call, will wait until a new data has arrived
-            frame = inDisparity.getFrame()
-
-            # Normalization for better visualization
-            normalized_frame = frame * (255 / self.max_disparity_val)
-            vis_frame = normalized_frame.astype(np.uint8) # only used for visualization
-        
-            non_vis_frame = (frame * (255 / self.max_disparity_val)).astype(np.float32)
-            if visualize:
-                frame = vis_frame 
-                disparities, move = self.getDisparity(pipeline, frame, visualize)
-            else:
-                frame = non_vis_frame
-                disparities, move = self.getDisparity(pipeline, frame, visualize)
-            
-            if cv2.waitKey(1) == ord('q'): # Hit q to print 
-                print(disparities)
-                if (move == 0):
-                    print("Go straight!")
-                elif (move == 1):
-                    print("Turn left!")
-                elif (move == 2):
-                    print("Turn right!")
-                elif (move == 3):
-                    print("Go back!")
-                else:
-                    print("Invalid move!")
-
-    def getDisparity(self, pipeline, frame, show_frame=False):
-
+    def get_grid_disparity(self, frame, show_frame=False):
         # calculate the corners of the square frames
         num_box = 4 * 6
         num_pts = 5 * 7
@@ -111,53 +81,41 @@ class DaiDepth:
 
         if show_frame:
             frame = cv2.applyColorMap(frame, cv2.COLORMAP_JET)
-        # print(frame.shape) # frame is 400 * 640 * 3
-        disparities, depths, middle_pts = np.empty(num_box, dtype=np.uint16), np.empty(num_box, dtype=np.float64), []
-        for i in range(num_box):
-            # disparities[i] = np.mean(frame[pts[2][i]:pts[3][i], pts[0][i]:pts[1][i]]).astype(np.int64) # averages within each box
-            # depths[i] = (focal_length * 7.5 / disparities[i]).astype(np.int64)
-            # print(focal_length, depths[i])
-            # middle_pts.append(((pts[0][i]+pts[1][i])//2, (pts[2][i]+pts[3][i])//2))
-            # frame = cv2.rectangle(frame, (pts[0][i],pts[2][i]), (pts[1][i],pts[3][i]), (0,255,0), 1)
-            # frame = cv2.putText(frame, str(depths[i]), middle_pts[i], cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0,255,0), 1, cv2.LINE_AA)
 
+        disparities, depths, middle_pts = np.empty(num_box, dtype=np.uint16), np.empty(num_box, dtype=np.float64), []  
+        for i in range(num_box):
             subframe = frame[pts[2][i]:pts[3][i], pts[0][i]:pts[1][i], 0] if show_frame else frame[pts[2][i]:pts[3][i], pts[0][i]:pts[1][i]]
-            # print(subframe.shape)
             subframe = subframe[subframe>0] # we don't want extreme values
             subframe = subframe[subframe<190]
-            # method 1: use the averaged disparity
-            # disparities[i] = np.mean(subframe) # averages within each box
-            # method 2: use the number/probability distribution to draw a disparity value
-            # disparities[i] = np.random.choice(subframe.flatten()) if np.any(subframe) else np.mean(subframe)
-            # method 3: use the disparity of the middle point
-            # print((pts[2][i]+pts[3][i])//2, ((pts[0][i]+pts[1][i])//2).dtype)
-            # print(frame[50][54], frame[50][54].shape, np.mean(frame[50][54]))
-            if (show_frame):
+            if show_frame:
                 disparities[i] = frame[(pts[2][i]+pts[3][i])//2][(pts[0][i]+pts[1][i])//2][0] * scaling
             else:
                 disparities[i] = frame[(pts[2][i]+pts[3][i])//2][(pts[0][i]+pts[1][i])//2] * scaling
-            # depths[i] = (focal_length * 7.5 / disparities[i]).astype(np.int64)
-            # print(depths[i], disparities[i])
 
-            if self.show_frame:
+            if show_frame:
                 middle_pts.append(((pts[0][i]+pts[1][i])//2, (pts[2][i]+pts[3][i])//2))
                 frame = cv2.rectangle(frame, (pts[0][i],pts[2][i]), (pts[1][i],pts[3][i]), (0,255,0), 1)
                 frame = cv2.putText(frame, str(disparities[i]), middle_pts[i], cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0,255,0), 1, cv2.LINE_AA)
-        if self.show_frame:
+        if show_frame:
             cv2.imshow("disparity_color_map", frame)
 
-        # determine how the car should react if there is an obstacle
-        turn_left = np.sum(disparities[0:12]==0) > 0
-        turn_right = np.sum(disparities[12:24]==0) > 0
-        move = 0
-        if (turn_left and turn_right):
-            move = 3
-        elif (turn_left):
-            move = 1
-        elif(turn_right):
-            move = 2
+        return disparities
 
-        return disparities, move
+    # def getDisparity(self, pipeline, frame, show_frame=False):
+
+
+    #     # determine how the car should react if there is an obstacle
+    #     turn_left = np.sum(disparities[0:12]==0) > 0
+    #     turn_right = np.sum(disparities[12:24]==0) > 0
+    #     move = 0
+    #     if (turn_left and turn_right):
+    #         move = 3
+    #     elif (turn_left):
+    #         move = 1
+    #     elif(turn_right):
+    #         move = 2
+
+    #     return disparities, move
          
 
 

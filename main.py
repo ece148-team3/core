@@ -57,7 +57,10 @@ if __name__ == "__main__":
     camRgb.video.link(xoutRgb.input)
 
     # depth pipeline
-    # depth = DaiDepth(True, False, True, True, dai.Pipeline())
+
+
+    depth = DaiDepth(True, False, True, True, pipeline)
+
 
 
     with dai.Device(pipeline) as device:
@@ -67,13 +70,14 @@ if __name__ == "__main__":
 
         # Output queue will be used to get the rgb frames from the output defined above
         rbg_stream = device.getOutputQueue(name="rgb", maxSize=4, blocking=False)
+        disparity_stream = device.getOutputQueue(name="disparity", maxSize=4, blocking=False)
 
         # disparity_stream = device.getOutputQueue(name="disparity", maxSize=1, blocking=False)
         while True:
             videoIn = rbg_stream.get()
             cv_frame = videoIn.getCvFrame()
             bev_img = bev_transformer.birdseye_view(cv_frame)
-            bev_img = bev_img.download()
+            bev_img = bev_img.download() # move back to CPU
 
             if DEBUG:  
                 cv.namedWindow("bev", cv.WINDOW_NORMAL)
@@ -83,6 +87,24 @@ if __name__ == "__main__":
                     continue
 
 
+            # depth pipeline
+            disparity_frame = depth.get_frame(disparity_stream)
+            disparity_grid = depth.get_grid_disparity(disparity_frame)
+            print(disparity_grid)
+
+
+        # if cv2.waitKey(1) == ord('q'): # Hit q to print 
+        #     print(disparities)
+        #     if (move == 0):
+        #         print("Go straight!")
+        #     elif (move == 1):
+        #         print("Turn left!")
+        #     elif (move == 2):
+        #         print("Turn right!")
+        #     elif (move == 3):
+        #         print("Go back!")
+        #     else:
+        #         print("Invalid move!")
 
 
     

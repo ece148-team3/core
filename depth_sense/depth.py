@@ -60,7 +60,6 @@ class DaiDepth:
         """Get raw disparity stream from the pipeline, apply normalization to make range into [0, 255]"""
         inDisparity = disparity_stream.get()  # blocking call, will wait until a new data has arrived
         frame = inDisparity.getFrame()
-        print(frame.shape)
         normalized_frame = (frame * (255 / self.max_disparity_val)).astype(np.float32) # normalize and return
         return normalized_frame
 
@@ -69,6 +68,7 @@ class DaiDepth:
         num_box = 4 * 6
         num_pts = 5 * 7
         pts = z = np.empty((4, num_box), dtype=np.uint16)
+        vis_frame = None
         # fill the pts array column-wise
         for i in range(6):
             for j in range(4):
@@ -80,24 +80,24 @@ class DaiDepth:
         scaling  = 190 / 255 if self.extended_disparity else 95 / 255
 
         if show_frame:
-            frame = cv2.applyColorMap(frame, cv2.COLORMAP_JET)
+            print(frame.shape)
+            vis_frame = cv2.applyColorMap(frame.astype(np.uint8), cv2.COLORMAP_JET)
 
         disparities, depths, middle_pts = np.empty(num_box, dtype=np.uint16), np.empty(num_box, dtype=np.float64), []  
         for i in range(num_box):
-            subframe = frame[pts[2][i]:pts[3][i], pts[0][i]:pts[1][i], 0] if show_frame else frame[pts[2][i]:pts[3][i], pts[0][i]:pts[1][i]]
+            subframe = frame[pts[2][i]:pts[3][i], pts[0][i]:pts[1][i]]
             subframe = subframe[subframe>0] # we don't want extreme values
             subframe = subframe[subframe<190]
-            if show_frame:
-                disparities[i] = frame[(pts[2][i]+pts[3][i])//2][(pts[0][i]+pts[1][i])//2][0] * scaling
-            else:
-                disparities[i] = frame[(pts[2][i]+pts[3][i])//2][(pts[0][i]+pts[1][i])//2] * scaling
+            disparities[i] = frame[(pts[2][i]+pts[3][i])//2][(pts[0][i]+pts[1][i])//2] * scaling
 
             if show_frame:
                 middle_pts.append(((pts[0][i]+pts[1][i])//2, (pts[2][i]+pts[3][i])//2))
-                frame = cv2.rectangle(frame, (pts[0][i],pts[2][i]), (pts[1][i],pts[3][i]), (0,255,0), 1)
-                frame = cv2.putText(frame, str(disparities[i]), middle_pts[i], cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0,255,0), 1, cv2.LINE_AA)
+                vis_frame = cv2.rectangle(vis_frame, (pts[0][i],pts[2][i]), (pts[1][i],pts[3][i]), (0,255,0), 1)
+                vis_frame = cv2.putText(vis_frame, str(disparities[i]), middle_pts[i], cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0,255,0), 1, cv2.LINE_AA)
+        
         if show_frame:
-            cv2.imshow("disparity_color_map", frame)
+            cv2.imshow("disparity_color_map", vis_frame)
+            
 
         return disparities
 

@@ -65,9 +65,6 @@ if __name__ == "__main__":
 
     with dai.Device(pipeline) as device:
 
-        logging.info('Connected cameras: ', device.getConnectedCameras())
-        logging.info('Usb speed: ', device.getUsbSpeed().name)
-
         # Output queue will be used to get the rgb frames from the output defined above
         rbg_stream = device.getOutputQueue(name="rgb", maxSize=4, blocking=False)
         disparity_stream = device.getOutputQueue(name="disparity", maxSize=4, blocking=False)
@@ -79,20 +76,20 @@ if __name__ == "__main__":
             bev_img = bev_transformer.birdseye_view(cv_frame)
             bev_img = bev_img.download() # move back to CPU
 
-            if DEBUG:  
+            if DEBUG:
                 cv.namedWindow("bev", cv.WINDOW_NORMAL)
                 preview_bev = cv.resize(bev_img, (1920//4, 1080//4)) # downsizing for preview
                 cv.imshow("bev", preview_bev)
-                if cv.waitKey(1) == ord('q'):
-                    continue
-
 
             # depth pipeline
             disparity_frame = depth.get_frame(disparity_stream)
-            disparity_grid = depth.get_grid_disparity(disparity_frame)
-            print(disparity_grid)
+            disparity_grid = depth.get_grid_disparity(disparity_frame, DEBUG)
 
+            if cv.waitKey(1) == ord('q'):
+                break
+                
 
+ 
         # if cv2.waitKey(1) == ord('q'): # Hit q to print 
         #     print(disparities)
         #     if (move == 0):

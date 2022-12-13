@@ -68,29 +68,30 @@ class VESC:
         self.v.set_servo((angle * self.steering_scale) + self.steering_offset)
 
     def set_throttle(self, throttle: float):
-        assert throttle <= 1 and throttle >= 0, '\n\nThrottle values must be between 0 and 1'
+        assert throttle <= 1 and throttle >= -1, '\n\nThrottle values must be between 0 and 1'
         self.v.set_duty_cycle(throttle*self.percent)
+
 
     def _vesc_test(self):
         """Test the VESC motor controller. """
         pause_timer = 0.2
         logging.info("Testing throttle...")
-        myvesc.set_throttle(0.2)
+        self.set_throttle(0.2)
         time.sleep(pause_timer)
 
         logging.info("Testing angle...")
         logging.info("Setting angle to 0.5")
-        myvesc.set_angle(0.5)
+        self.set_angle(0.5)
         logging.info("Setting angle to 1")
         time.sleep(pause_timer)
-        myvesc.set_angle(1)
+        self.set_angle(1)
         logging.info("Setting angle to -1")
         time.sleep(pause_timer)
-        myvesc.set_angle(-1)
+        self.set_angle(-1)
         time.sleep(pause_timer)
 
         logging.info("Testing completed.")
-        myvesc.set_throttle(0)
+        self.set_throttle(0)
 
 
 

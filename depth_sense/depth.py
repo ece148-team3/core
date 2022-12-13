@@ -98,24 +98,8 @@ class DaiDepth:
         if show_frame:
             cv2.imshow("disparity_color_map", vis_frame)
             
-
         return disparities
 
-    # def getDisparity(self, pipeline, frame, show_frame=False):
-
-
-    #     # determine how the car should react if there is an obstacle
-    #     turn_left = np.sum(disparities[0:12]==0) > 0
-    #     turn_right = np.sum(disparities[12:24]==0) > 0
-    #     move = 0
-    #     if (turn_left and turn_right):
-    #         move = 3
-    #     elif (turn_left):
-    #         move = 1
-    #     elif(turn_right):
-    #         move = 2
-
-    #     return disparities, move
          
 
 

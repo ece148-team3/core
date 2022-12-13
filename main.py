@@ -14,6 +14,7 @@ import pickle
 # 3rd party libraries
 import depthai as dai
 import cv2 as cv
+import numpy as np
 
 # custom libraries
 from vesc.vesc_control import VESC
@@ -56,11 +57,8 @@ if __name__ == "__main__":
     # linking
     camRgb.video.link(xoutRgb.input)
 
-    # depth pipeline
-
 
     depth = DaiDepth(True, False, True, True, pipeline)
-
 
 
     with dai.Device(pipeline) as device:
@@ -79,7 +77,7 @@ if __name__ == "__main__":
             if DEBUG:
                 cv.namedWindow("bev", cv.WINDOW_NORMAL)
                 preview_bev = cv.resize(bev_img, (1920//4, 1080//4)) # downsizing for preview
-                cv.imshow("bev", preview_bev)
+                cv.imshow("bev", bev_img)
 
             # depth pipeline
             disparity_frame = depth.get_frame(disparity_stream)
@@ -88,6 +86,32 @@ if __name__ == "__main__":
             if cv.waitKey(1) == ord('q'):
                 break
                 
+
+            # determine how the car should react if there is an obstacle
+            turn_left = (np.sum(disparity_grid[0:3]) + np.sum(disparity_grid[6:9] == 0)) > 0
+            turn_right = (np.sum(disparity_grid[12:15]) + np.sum(disparity_grid[18:21] == 0)) > 0
+
+            print(disparity_grid)
+            myvesc.set_angle(0.5)
+            myvesc.set_throttle(0.1)
+
+            # if (turn_left and turn_right):
+            #     logging.info("Reversing")
+            #     myvesc.set_throttle(-0.1)
+            # elif (turn_left):
+            #     logging.info("Turning left")
+            #     myvesc.set_angle(-1)
+            # elif(turn_right):
+            #     logging.info("Turning right")
+            #     myvesc.set_angle(1)
+            #     myvesc.set_throttle(0.1)
+            # else:
+            #     logging.info("Going straight")
+            #     myvesc.set_angle(0)
+            #     myvesc.set_throttle(0.1)
+            
+
+            
 
  
         # if cv2.waitKey(1) == ord('q'): # Hit q to print 

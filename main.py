@@ -28,11 +28,14 @@ if __name__ == "__main__":
     RGB_HEIGHT = 1080
     
     logging.basicConfig(level=logging.INFO, format="[ %(levelname)s ] %(module)s -> %(funcName)s: %(message)s")
+    
+    # open VESC device
     try: 
         myvesc = VESC('/dev/ttyACM0', steering_offset=0.05)
     except Exception as e:
         logging.error(e)
 
+    # load homography matrix for BEV
     logging.info("Loading homography matrix")
     with open('bev/homography_mat.pkl', 'rb') as f:
         H = pickle.load(f)
@@ -45,7 +48,6 @@ if __name__ == "__main__":
     # define source and output
     camRgb = pipeline.create(dai.node.ColorCamera)
     xoutRgb = pipeline.create(dai.node.XLinkOut)
-
     xoutRgb.setStreamName("rgb")
 
     # properties
@@ -57,9 +59,8 @@ if __name__ == "__main__":
     # linking
     camRgb.video.link(xoutRgb.input)
 
-
+    # depth pipeline
     depth = DaiDepth(True, False, True, True, pipeline)
-
 
     with dai.Device(pipeline) as device:
 
@@ -86,7 +87,6 @@ if __name__ == "__main__":
             if cv.waitKey(1) == ord('q'):
                 break
                 
-
             # determine how the car should react if there is an obstacle
             turn_left = (np.sum(disparity_grid[0:3]) + np.sum(disparity_grid[6:9] == 0)) > 0
             turn_right = (np.sum(disparity_grid[12:15]) + np.sum(disparity_grid[18:21] == 0)) > 0
@@ -95,6 +95,7 @@ if __name__ == "__main__":
             myvesc.set_angle(0.5)
             myvesc.set_throttle(0.1)
 
+            # basic obstacle avoidance
             # if (turn_left and turn_right):
             #     logging.info("Reversing")
             #     myvesc.set_throttle(-0.1)
@@ -110,22 +111,6 @@ if __name__ == "__main__":
             #     myvesc.set_angle(0)
             #     myvesc.set_throttle(0.1)
             
-
-            
-
- 
-        # if cv2.waitKey(1) == ord('q'): # Hit q to print 
-        #     print(disparities)
-        #     if (move == 0):
-        #         print("Go straight!")
-        #     elif (move == 1):
-        #         print("Turn left!")
-        #     elif (move == 2):
-        #         print("Turn right!")
-        #     elif (move == 3):
-        #         print("Go back!")
-        #     else:
-        #         print("Invalid move!")
 
 
     
